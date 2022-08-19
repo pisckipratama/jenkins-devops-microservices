@@ -52,6 +52,32 @@ pipeline {
 				sh "mvn failsafe:integration-test failsafe:verify"
 			}
 		}
+
+		stage('Package') {
+			steps {
+				sh "mvn package -DskipTests"
+			}
+		}
+
+		stage('Build Docker Image') {
+			steps {
+				// sh "docker build -t pisckitama/currency-exchange:${env.BUILD_TAG}"
+				script {
+					dockerImage = docker.build('pisckitama/currency-exchange:${env.BUILD_TAG}');
+				}
+			}
+		}
+
+		stage('Push Docker Image') {
+			steps {
+				script {
+					docker.withRegistry('', 'dockerhubpiscki') {
+						dockerImage.push();
+						dockerImage.push('latest');
+					}
+				}
+			}
+		}
 	} 
 	
 	post {
