@@ -63,7 +63,7 @@ pipeline {
 			steps {
 				// sh "docker build -t pisckitama/currency-exchange:${env.BUILD_TAG}"
 				script {
-					dockerImage = docker.build('pisckitama/currency-exchange:${env.BUILD_TAG}');
+					dockerImage = docker.build("pisckitama/currency-exchange:${env.BUILD_TAG}");
 				}
 			}
 		}
