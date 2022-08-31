@@ -1,94 +1,128 @@
-// scripted pipeline
 
-// node {
-// 	stage('Build') {
-// 		echo "Build"
-// 	}
-// 	stage('Test') {
-// 		echo "Test"
-// 	}
-// }
-
-// declarative pipeline
 pipeline {
-	agent any
-	// agent {
-	// 	docker { image 'maven:3.6.3' }
-	// }
-	environment {
-		dockerHome = tool 'myDocker'
-		mavenHome = tool 'myMaven'
-		PATH = "$dockerHome/bin:$mavenHome/bin:$PATH"
-	}
-	stages {
-		stage('Checkout') {
-			steps {
-				sh "mvn --version"
-				sh "docker version"
-				echo "Build"
-				echo "PATH - $PATH"
-				echo "BUILD NUMBER - $env.BUILD_NUMBER"
-				echo "BUILD_ID - $env.BUILD_ID"
-				echo "JOB_NAME - $env.JOB_NAME"
-				echo "BUILD_TAG - $env.BUILD_TAG"
-				echo "BUILD_URL - $env.BUILD_URL"
-			}
-		}
+  agent none
 
-		stage('Build') {
-			steps {
+  stages {
+    stage('Install') {
+      agent {
+        docker {
+          image 'maven:3.6.3-openjdk-17-slim'
+        }
+      }
+
+      steps {
 				sh "mvn clean compile"
-			}
-		}
+      }
+    }
 
-		stage('Test') {
-			steps {
-				sh "mvn test"
-			}
-		}
+    stage('Test') {
+			agent {
+        docker {
+          image 'maven:3.6.3-openjdk-17-slim'
+        }
+      }
 
-		stage('Integration Test') {
+      steps {
+        sh "mvn test"
+      }
+    }
+
+		stage() {
+			agent {
+        docker {
+          image 'maven:3.6.3-openjdk-17-slim'
+        }
+      }
+
 			steps {
 				sh "mvn failsafe:integration-test failsafe:verify"
 			}
 		}
 
-		stage('Package') {
-			steps {
-				sh "mvn package -DskipTests"
-			}
-		}
+    stage('Build Docker Image') {
+      steps {
+        script {
+          dockerImage = docker.build("pisckitama/tamakopi:latest");
+        }
+      }
+    }
 
-		stage('Build Docker Image') {
-			steps {
-				// sh "docker build -t pisckitama/currency-exchange:${env.BUILD_TAG}"
-				script {
-					dockerImage = docker.build("pisckitama/currency-exchange:${env.BUILD_TAG}");
-				}
-			}
-		}
+    // stage('Push Docker Image') {
+    //   when {
+    //     anyOf {
+    //       branch "develop"
+    //       branch "release/*"
+    //       branch "main"
+    //     }
+    //   }
 
-		stage('Push Docker Image') {
-			steps {
-				script {
-					docker.withRegistry('', 'dockerhubpiscki') {
-						dockerImage.push();
-						dockerImage.push('latest');
-					}
-				}
-			}
-		}
-	} 
-	
-	post {
-		always {
-			echo "Im awesome. I run always"
-		}
-		success {
-			echo 'I run when you are successful'
-		}
-		failure {
-			echo 'I run when you fail'
-		}
-	}
+    //   steps {
+    //     script {
+    //       docker.withRegistry('', 'dockerhub') {
+    //         dockerImage.push();
+    //       }
+    //     }
+    //   }
+    // }
+
+    // stage('Deploy') {
+    //   when {
+    //     anyOf {
+    //       branch "develop"
+    //       branch "release/*"
+    //       branch "main"
+    //     }
+    //   }
+
+    //   agent {
+    //     docker {
+    //       image 'joshendriks/alpine-k8s'
+    //     }
+    //   }
+
+    //   steps {
+    //     script {
+    //       if (env.BRANCH_NAME == "develop") {
+    //         echo "this is running on develop"
+    //         withCredentials([file(credentialsId: 'artopologi-cluster', variable: 'KUBECONFIG')]) {
+    //           sh 'kubectl set image --record deployment/${BACKEND_APP} ${BACKEND_APP}=${IMAGE_NAME}'
+    //         }
+    //       }
+
+    //       if (env.BRANCH_NAME.contains('release')) {
+    //         echo "this is running on release"
+    //         withCredentials([file(credentialsId: 'artopologi-cluster', variable: 'KUBECONFIG')]) {
+    //           sh 'kubectl set image --record -n staging deployment/${BACKEND_APP} ${BACKEND_APP}=${IMAGE_NAME_RELEASE}'
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+
+    // stage('Delete Docker Image') {
+    //   when {
+    //     anyOf {
+    //       branch "develop"
+    //       branch "release/*"
+    //       branch "main"
+    //     }
+    //   }
+
+    //   steps {
+    //     script {
+    //       node {
+    //         if (env.BRANCH_NAME == "develop") {
+    //           echo "this is running on develop"
+    //           sh "docker rmi -f ${IMAGE_NAME}"
+    //         }
+
+    //         if (env.BRANCH_NAME.contains('release')) {
+    //           echo "this is running on release ${branch_version}"
+    //           sh "docker rmi -f ${IMAGE_NAME_RELEASE}"
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+  }
 }
