@@ -27,7 +27,7 @@ pipeline {
       }
     }
 
-		stage() {
+		stage('Integration Test') {
 			agent {
         docker {
           image 'maven:3.6.3-openjdk-17-slim'
